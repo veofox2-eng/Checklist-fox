@@ -5,6 +5,8 @@ import CreateProfile from './pages/CreateProfile';
 import Dashboard from './pages/Dashboard';
 import ChecklistView from './pages/ChecklistView';
 import AnimatedBackground from './components/AnimatedBackground';
+import ThemeToggle from './components/ThemeToggle';
+import { MasterProvider } from './contexts/MasterContext';
 
 // Simple auth check component
 const ProtectedRoute = ({ children }) => {
@@ -17,8 +19,9 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <>
+    <MasterProvider>
       <AnimatedBackground />
+      <ThemeToggle />
       <div className="layout-container">
         <Routes>
           <Route path="/" element={<ProfileSelection />} />
@@ -40,7 +43,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-    </>
+    </MasterProvider>
   );
 }
 

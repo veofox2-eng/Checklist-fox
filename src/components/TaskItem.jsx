@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { formatDuration } from '../utils/timeUtils';
+import React, { useState, useEffect } from 'react';
+import { formatDuration, calculateDuration } from '../utils/timeUtils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, MoreVertical, CornerDownRight } from 'lucide-react';
+import { Plus, Trash2, MoreVertical, CornerDownRight, Clock, FileText, X } from 'lucide-react';
 
 const TaskItem = ({
     task,
@@ -15,9 +15,19 @@ const TaskItem = ({
     const [isAddingSub, setIsAddingSub] = useState(false);
     const [newSubTitle, setNewSubTitle] = useState('');
 
+    // Modal state
+    const [showDescModal, setShowDescModal] = useState(false);
+    const [descText, setDescText] = useState(task.description || '');
+    const [showStatsModal, setShowStatsModal] = useState(false);
     // Time tracking local state
     const [startTime, setStartTime] = useState(task.start_time || '');
     const [endTime, setEndTime] = useState(task.end_time || '');
+
+    // Synchronize local state if parent prop dynamically overrides the timer
+    useEffect(() => {
+        setStartTime(task.start_time || '');
+        setEndTime(task.end_time || '');
+    }, [task.start_time, task.end_time]);
 
     // Auto-close dropdown when clicking outside (or simulated by mouse leave wrapper)
     const handleToggle = () => {
@@ -42,9 +52,12 @@ const TaskItem = ({
                 await onUpdateTask(task.id, { start_time: startTime, end_time: endTime });
             } catch (err) {
                 console.error("Error saving time", err);
+                alert("Database Error updating Task Time! Make sure your schema has all required columns. Error: " + (err?.response?.data?.error || err.message));
             }
         }
     };
+
+
 
     // Calculate nesting visuals
     const marginLeft = depth > 0 ? '2rem' : '0';
@@ -86,20 +99,15 @@ const TaskItem = ({
                 initial={{ opacity: 0, x: -25, scale: 0.95 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                whileHover={{ scale: 1.01, x: 5, backgroundColor: 'rgba(255,255,255,0.02)' }}
+                whileHover={{ scale: 1.01, x: 5 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
                     padding: '14px 18px',
-                    background: 'var(--bg-glass)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-md)',
                     marginBottom: '0.6rem',
-                    position: 'relative',
-                    backdropFilter: 'blur(16px)',
-                    boxShadow: 'var(--shadow-sm)'
+                    backdropFilter: 'blur(16px)'
                 }}
                 onMouseLeave={() => setShowDropdown(false)}
             >
@@ -131,8 +139,11 @@ const TaskItem = ({
                     gap: '12px'
                 }}>
                     {task.title}
-                    {task.is_completed && depth === 0 && (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--success)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>
+                    {task.is_completed && (
+                        <span
+                            onClick={(e) => { e.stopPropagation(); setShowStatsModal(true); }}
+                            style={{ fontSize: '0.8rem', color: 'var(--success)', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '12px', cursor: 'pointer' }}
+                        >
                             Completed
                         </span>
                     )}
@@ -140,10 +151,12 @@ const TaskItem = ({
 
                 {/* Individual/Group Total Duration */}
                 {!task.is_completed && task.total_duration > 0 && (
-                    <div style={{ marginRight: '4px', fontSize: '0.8rem', color: 'var(--accent-primary)', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', fontFamily: 'monospace' }}>
-                        ⏱ {formatDuration(task.total_duration)}
+                    <div style={{ marginRight: '4px', fontSize: '0.8rem', color: 'var(--accent-primary)', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
+                        <Clock size={14} color="var(--accent-primary)" /> {formatDuration(task.total_duration)}
                     </div>
                 )}
+
+
 
                 {/* Time Tracking Inputs */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', zIndex: 5, marginRight: '16px' }}>
@@ -178,6 +191,16 @@ const TaskItem = ({
                         />
                     </div>
                 </div>
+
+                {/* Task Description Icon */}
+                <button
+                    className="btn-icon-subtle"
+                    onClick={(e) => { e.stopPropagation(); setShowDescModal(true); }}
+                    title="Task Description"
+                    style={{ marginRight: '8px' }}
+                >
+                    <FileText size={16} />
+                </button>
 
                 {/* Hover Dropdown Wrapper */}
                 <div
@@ -275,6 +298,80 @@ const TaskItem = ({
                     </motion.form>
                 )}
             </AnimatePresence >
+
+            {/* Description Modal */}
+            <AnimatePresence>
+                {showDescModal && (
+                    <div onClick={() => setShowDescModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                        <motion.div
+                            onClick={(e) => e.stopPropagation()}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '500px', border: '1px solid var(--border-highlight)', boxShadow: 'var(--shadow-lg)' }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem' }}>Task Description</h3>
+                                <button className="btn-icon-subtle" onClick={() => setShowDescModal(false)}><X size={20} /></button>
+                            </div>
+                            <textarea
+                                value={descText}
+                                onChange={(e) => setDescText(e.target.value)}
+                                onBlur={(e) => onUpdateTask(task.id, { description: e.target.value })}
+                                placeholder="Add notes, links, or details about this task..."
+                                style={{
+                                    width: '100%',
+                                    minHeight: '150px',
+                                    background: 'var(--bg-primary)',
+                                    color: 'var(--text-primary)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    resize: 'vertical',
+                                    fontFamily: 'inherit',
+                                    fontSize: '0.95rem'
+                                }}
+                            />
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Stats Modal */}
+            <AnimatePresence>
+                {showStatsModal && (
+                    <div onClick={() => setShowStatsModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                        <motion.div
+                            onClick={(e) => e.stopPropagation()}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '400px', border: '1px solid var(--border-highlight)', boxShadow: 'var(--shadow-lg)', textAlign: 'center' }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem' }}>Task Completion Stats</h3>
+                                <button className="btn-icon-subtle" onClick={() => setShowStatsModal(false)}><X size={20} /></button>
+                            </div>
+
+                            <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '12px' }}>
+                                <p style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Time Completed (Actual)</p>
+                                <div style={{ fontSize: '1.4rem', color: 'var(--success)', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                                    {formatDuration(calculateDuration(task.start_time, task.end_time))}
+                                </div>
+                            </div>
+
+                            <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <p style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Total Time Allocated</p>
+                                <div style={{ fontSize: '1.2rem', color: 'var(--accent-primary)', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                                    {task.allocated_time ? formatDuration(calculateDuration(task.start_time, task.allocated_time)) : formatDuration(calculateDuration(task.start_time, task.end_time))}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+
 
             {/* Render Children Recursively */}
             {

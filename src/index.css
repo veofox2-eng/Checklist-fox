@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;800&display=swap');
 
 :root {
+  color-scheme: light;
   /* Core Colors */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
@@ -41,6 +42,37 @@
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* Core Colors - Dark Mode */
+  --bg-primary: #0f172a;
+  /* Slate 900 */
+  --bg-secondary: #1e293b;
+  /* Slate 800 */
+  --bg-glass: rgba(30, 41, 59, 0.7);
+  --bg-glass-hover: rgba(30, 41, 59, 0.9);
+
+  --accent-primary: #818cf8;
+  /* Lighter Indigo for dark mode */
+  --accent-secondary: #f472b6;
+  /* Lighter Pink for dark mode */
+  --accent-glow: rgba(129, 140, 248, 0.3);
+  --accent-glow-secondary: rgba(244, 114, 182, 0.2);
+
+  --text-primary: #f8fafc;
+  /* Slate 50 */
+  --text-secondary: #cbd5e1;
+  /* Slate 300 */
+  --text-muted: #94a3b8;
+  /* Slate 400 */
+
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-highlight: rgba(129, 140, 248, 0.4);
+
+  --danger: #f87171;
+  --success: #34d399;
 }
 
 * {
@@ -304,14 +336,20 @@ input {
 .task-row-content {
   position: relative;
   z-index: 2;
-  transition: z-index 0.2s steps(1, end);
+  transition: z-index 0.2s steps(1, end), all var(--transition-fast);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
 }
 
 .task-row-content.dropdown-active,
 .task-row-content:hover,
 .task-row-content:focus-within {
   z-index: 50;
-  transition: none;
+  transition: z-index 0s, transform 0.2s ease, background 0.2s ease;
+  background: var(--bg-glass-hover);
+  border-color: var(--border-highlight);
 }
 
 .layout-container {
@@ -402,4 +440,10 @@ input {
   border: solid white;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
+}
+
+/* Purple Clock Icon for Time Inputs */
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(34%) sepia(42%) saturate(5458%) hue-rotate(231deg) brightness(98%) contrast(93%);
+  cursor: pointer;
 }

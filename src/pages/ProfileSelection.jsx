@@ -13,8 +13,13 @@ const ProfileSelection = () => {
     // Login Modal State
     const [selectedProfile, setSelectedProfile] = useState(null);
     const [password, setPassword] = useState('');
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [loginError, setLoginError] = useState('');
     const [loggingIn, setLoggingIn] = useState(false);
+
+    // Delete Profile Modal State
+    const [showDeleteProfile, setShowDeleteProfile] = useState(null);
+    const [deleteProfilePassword, setDeleteProfilePassword] = useState('');
 
     useEffect(() => {
         fetchProfiles();
@@ -41,28 +46,50 @@ const ProfileSelection = () => {
         setLoggingIn(true);
 
         try {
-            const response = await profileService.login(selectedProfile.id, password);
-            localStorage.setItem('activeProfileId', response.data.id);
-            localStorage.setItem('activeProfileName', response.data.name);
-            localStorage.setItem('activeProfileAvatar', response.data.avatar_url || '');
-            navigate('/dashboard');
+            if (isResettingPassword) {
+                // Reset password flow
+                const response = await profileService.updateProfile(selectedProfile.id, { password });
+
+                // Keep them logged in via the new token/hash data
+                localStorage.setItem('activeProfileId', response.data.id);
+                localStorage.setItem('activeProfileName', response.data.name);
+                localStorage.setItem('activeProfileAvatar', response.data.avatar_url || '');
+                navigate('/dashboard');
+            } else {
+                // Normal login flow
+                const response = await profileService.login(selectedProfile.id, password);
+                localStorage.setItem('activeProfileId', response.data.id);
+                localStorage.setItem('activeProfileName', response.data.name);
+                localStorage.setItem('activeProfileAvatar', response.data.avatar_url || '');
+                navigate('/dashboard');
+            }
         } catch (err) {
-            setLoginError(err.response?.data?.error || 'Invalid credentials');
+            setLoginError(err.response?.data?.error || (isResettingPassword ? 'Failed to reset password' : 'Invalid credentials'));
         } finally {
             setLoggingIn(false);
         }
     };
 
-    const handleDeleteProfile = async (e, id) => {
+    const handleDeleteProfileClick = (e, profile) => {
         e.stopPropagation();
-        if (window.confirm("Are you sure you want to delete this profile? This action will permanently delete all associated checklists and tasks.")) {
-            try {
-                await profileService.deleteProfile(id);
-                setProfiles(profiles.filter(p => p.id !== id));
-            } catch (error) {
-                console.error('Error deleting profile:', error);
-                alert('Failed to delete profile.');
-            }
+        setShowDeleteProfile(profile);
+    };
+
+    const confirmDeleteProfile = async (e) => {
+        e.preventDefault();
+        if (!showDeleteProfile || !deleteProfilePassword) return;
+        setLoggingIn(true);
+        setLoginError('');
+        try {
+            await profileService.deleteProfile(showDeleteProfile.id, deleteProfilePassword);
+            setProfiles(profiles.filter(p => p.id !== showDeleteProfile.id));
+            setShowDeleteProfile(null);
+            setDeleteProfilePassword('');
+        } catch (error) {
+            console.error('Error deleting profile:', error);
+            setLoginError(error.response?.data?.error || 'Incorrect password or failed to delete.');
+        } finally {
+            setLoggingIn(false);
         }
     };
 
@@ -161,7 +188,7 @@ const ProfileSelection = () => {
                                 onClick={() => setSelectedProfile(profile)}
                             >
                                 <button
-                                    onClick={(e) => handleDeleteProfile(e, profile.id)}
+                                    onClick={(e) => handleDeleteProfileClick(e, profile)}
                                     className="btn-icon-subtle danger"
                                     style={{
                                         position: 'absolute',
@@ -215,7 +242,7 @@ const ProfileSelection = () => {
                             alignItems: 'center',
                             zIndex: 50
                         }}
-                        onClick={() => { setSelectedProfile(null); setPassword(''); setLoginError(''); }}
+                        onClick={() => { setSelectedProfile(null); setPassword(''); setLoginError(''); setIsResettingPassword(false); }}
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -231,7 +258,7 @@ const ProfileSelection = () => {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <button
-                                onClick={() => { setSelectedProfile(null); setPassword(''); setLoginError(''); }}
+                                onClick={() => { setSelectedProfile(null); setPassword(''); setLoginError(''); setIsResettingPassword(false); }}
                                 style={{ position: 'absolute', top: '16px', right: '16px', color: 'var(--text-muted)' }}
                             >
                                 <X size={24} />
@@ -254,8 +281,10 @@ const ProfileSelection = () => {
                                         <User size={32} color="var(--text-muted)" style={{ margin: '16px' }} />
                                     )}
                                 </div>
-                                <h2>Hi, {selectedProfile.name}</h2>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>Enter your password to continue</p>
+                                <h2>{isResettingPassword ? `Reset Password` : `Hi, ${selectedProfile.name}`}</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                                    {isResettingPassword ? `Enter a new password for ${selectedProfile.name}` : `Enter your password to continue`}
+                                </p>
                             </div>
 
                             {loginError && (
@@ -266,10 +295,10 @@ const ProfileSelection = () => {
 
                             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div style={{ position: 'relative' }}>
-                                    <Lock size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                                    <Lock size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                                     <input
                                         type="password"
-                                        placeholder="Password"
+                                        placeholder={isResettingPassword ? "Enter new password" : "Password"}
                                         className="glass-input"
                                         style={{ paddingLeft: '40px' }}
                                         value={password}
@@ -287,10 +316,111 @@ const ProfileSelection = () => {
                                 >
                                     {loggingIn ? <Loader2 size={20} className="spinner" /> : (
                                         <>
-                                            Login
+                                            {isResettingPassword ? "Reset & Login" : "Login"}
                                             <ArrowRight size={18} />
                                         </>
                                     )}
+                                </button>
+
+                                {!isResettingPassword ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsResettingPassword(true); setPassword(''); setLoginError(''); }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.85rem', cursor: 'pointer', marginTop: '4px', textDecoration: 'underline' }}
+                                    >
+                                        Forgot Password?
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsResettingPassword(false); setPassword(''); setLoginError(''); }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer', marginTop: '4px' }}
+                                    >
+                                        Cancel Reset
+                                    </button>
+                                )}
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Delete Profile Modal */}
+            <AnimatePresence>
+                {showDeleteProfile && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(10, 10, 15, 0.8)',
+                            backdropFilter: 'blur(10px)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 50
+                        }}
+                        onClick={() => { setShowDeleteProfile(null); setDeleteProfilePassword(''); setLoginError(''); }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="glass-panel"
+                            style={{
+                                width: '100%',
+                                maxWidth: '400px',
+                                padding: '2.5rem',
+                                position: 'relative',
+                                border: '1px solid rgba(239, 68, 68, 0.3)'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => { setShowDeleteProfile(null); setDeleteProfilePassword(''); setLoginError(''); }}
+                                style={{ position: 'absolute', top: '16px', right: '16px', color: 'var(--text-muted)' }}
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                                <Trash2 size={48} color="var(--danger)" style={{ margin: '0 auto 1rem auto' }} />
+                                <h2 style={{ color: 'var(--danger)' }}>Delete Profile?</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', lineHeight: '1.5' }}>
+                                    Are you sure you want to permanently delete <strong>{showDeleteProfile.name}</strong>? This will destroy all associated checklists. Enter your password to confirm.
+                                </p>
+                            </div>
+
+                            {loginError && (
+                                <div style={{ color: 'var(--danger)', fontSize: '0.9rem', marginBottom: '1rem', textAlign: 'center' }}>
+                                    {loginError}
+                                </div>
+                            )}
+
+                            <form onSubmit={confirmDeleteProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ position: 'relative' }}>
+                                    <Lock size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                                    <input
+                                        type="password"
+                                        placeholder="Password"
+                                        className="glass-input"
+                                        style={{ paddingLeft: '40px' }}
+                                        value={deleteProfilePassword}
+                                        onChange={(e) => setDeleteProfilePassword(e.target.value)}
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={loggingIn || !deleteProfilePassword}
+                                    style={{ width: '100%', background: 'linear-gradient(135deg, #ef4444, #b91c1c)' }}
+                                >
+                                    {loggingIn ? <Loader2 size={20} className="spinner" /> : 'Delete Profile'}
                                 </button>
                             </form>
                         </motion.div>
