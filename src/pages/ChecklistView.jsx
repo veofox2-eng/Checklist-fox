@@ -170,7 +170,6 @@ const ChecklistView = () => {
                 const historyStr = JSON.stringify(newHistory);
                 await checklistService.updateChecklist(id, { extension_history: historyStr });
                 setChecklist(prev => ({ ...prev, extension_history: historyStr }));
-                setExtensionHistory(newHistory);
                 setExtendedDate('');
             } catch (err) {
                 console.error("Error saving extension date", err);
@@ -180,28 +179,20 @@ const ChecklistView = () => {
     };
 
     const handleDeleteExtensionDate = async (indexToRemove) => {
-        console.log(`[DEBUG] handleDeleteExtensionDate invoked. idx: ${indexToRemove}`);
         try {
             const newHistory = [...extensionHistory];
-            console.log(`[DEBUG] Current history:`, newHistory);
             newHistory.splice(indexToRemove, 1);
-            console.log(`[DEBUG] Spliced history:`, newHistory);
 
             const historyStr = JSON.stringify(newHistory);
-            console.log(`[DEBUG] Sending to Vercel stringified:`, historyStr);
-            const res = await checklistService.updateChecklist(id, { extension_history: historyStr });
-            console.log(`[DEBUG] Vercel Response Code:`, res.status);
+            await checklistService.updateChecklist(id, { extension_history: historyStr });
 
             setChecklist(prev => ({ ...prev, extension_history: historyStr }));
-            // Force React to recognize the new array reference
-            setExtensionHistory(newHistory);
 
             if (newHistory.length === 0) {
                 setShowHistoryModal(false);
             }
-            alert("Deleted extension history successfully!");
         } catch (err) {
-            console.error("[DEBUG] Error deleting extension date", err);
+            console.error("Error deleting extension date", err);
             alert("Database Error deleting extension date: " + (err.response?.data?.error || err.message));
         }
     };
@@ -215,15 +206,12 @@ const ChecklistView = () => {
     };
 
     const handleDeleteTimerLog = async (logId) => {
-        console.log(`[DEBUG] handleDeleteTimerLog invoked. logId: ${logId}`);
         try {
-            const res = await checklistService.deleteTimerLog(logId);
-            console.log(`[DEBUG] Vercel response received for timer log. HTTP Code:`, res.status);
+            await checklistService.deleteTimerLog(logId);
             setTimerLogs(prev => prev.filter(log => log.id !== logId));
             if (timerLogs.length <= 1) setShowTimerLogsModal(false);
-            alert("Timer log deleted successfully!");
         } catch (err) {
-            console.error("[DEBUG] Error deleting timer log:", err);
+            console.error("Error deleting timer log", err);
             alert("Database Error deleting log: " + (err.response?.data?.error || err.message));
         }
     };
