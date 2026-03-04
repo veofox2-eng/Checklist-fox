@@ -170,8 +170,8 @@ const ChecklistView = () => {
                 const historyStr = JSON.stringify(newHistory);
                 await checklistService.updateChecklist(id, { extension_history: historyStr });
 
-                // Force authoritative server state cleanly avoiding local map locks
-                await fetchChecklistAndTasks();
+                // Synchronous memory update securely bypassing HTTP GET caching limitations
+                setChecklist(prev => ({ ...prev, extension_history: historyStr }));
 
                 setExtendedDate('');
                 alert("Extended Timeline saved successfully!");
@@ -190,8 +190,8 @@ const ChecklistView = () => {
             const historyStr = JSON.stringify(newHistory);
             await checklistService.updateChecklist(id, { extension_history: historyStr });
 
-            // Ensure React grabs the brand new server payload guaranteeing a visual map swap
-            await fetchChecklistAndTasks();
+            // Synchronous memory update completely severing network cache boundaries
+            setChecklist(prev => ({ ...prev, extension_history: historyStr }));
 
             if (newHistory.length === 0) {
                 setShowHistoryModal(false);
@@ -440,7 +440,7 @@ const ChecklistView = () => {
                                             const formattedDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : expectedDate;
 
                                             await checklistService.updateChecklist(id, { expected_date: formattedDate });
-                                            await fetchChecklistAndTasks();
+                                            setChecklist(prev => ({ ...prev, expected_date: formattedDate }));
                                             alert("Expected Date saved successfully!");
                                         } catch (err) {
                                             console.error("Error saving expected date", err);
