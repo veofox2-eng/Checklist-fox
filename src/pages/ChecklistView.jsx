@@ -180,13 +180,20 @@ const ChecklistView = () => {
     };
 
     const handleDeleteExtensionDate = async (indexToRemove) => {
-        const newHistory = extensionHistory.filter((_, idx) => idx !== indexToRemove);
         try {
+            const newHistory = [...extensionHistory];
+            newHistory.splice(indexToRemove, 1);
+
             const historyStr = JSON.stringify(newHistory);
             await checklistService.updateChecklist(id, { extension_history: historyStr });
+
             setChecklist(prev => ({ ...prev, extension_history: historyStr }));
+            // Force React to recognize the new array reference
             setExtensionHistory(newHistory);
-            if (newHistory.length === 0) setShowHistoryModal(false);
+
+            if (newHistory.length === 0) {
+                setShowHistoryModal(false);
+            }
         } catch (err) {
             console.error("Error deleting extension date", err);
             alert("Database Error deleting extension date: " + err.message);
@@ -631,9 +638,12 @@ const ChecklistView = () => {
                                             </div>
                                             {isMaster && (
                                                 <button
-                                                    onClick={() => handleDeleteTimerLog(log.id)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteTimerLog(log.id);
+                                                    }}
                                                     className="btn-icon-subtle"
-                                                    style={{ color: '#ef4444', marginLeft: '12px' }}
+                                                    style={{ color: '#ef4444', marginLeft: '12px', zIndex: 10 }}
                                                     title="Delete this log"
                                                 >
                                                     <Trash2 size={16} />
@@ -674,9 +684,12 @@ const ChecklistView = () => {
                                             </div>
                                             {isMaster && (
                                                 <button
-                                                    onClick={() => handleDeleteExtensionDate(idx)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteExtensionDate(idx);
+                                                    }}
                                                     className="btn-icon-subtle"
-                                                    style={{ color: '#ef4444' }}
+                                                    style={{ color: '#ef4444', zIndex: 10 }}
                                                     title="Delete extension"
                                                 >
                                                     <Trash2 size={16} />
