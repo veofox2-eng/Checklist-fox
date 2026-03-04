@@ -169,8 +169,12 @@ const ChecklistView = () => {
             try {
                 const historyStr = JSON.stringify(newHistory);
                 await checklistService.updateChecklist(id, { extension_history: historyStr });
-                setChecklist(prev => ({ ...prev, extension_history: historyStr }));
+
+                // Force authoritative server state cleanly avoiding local map locks
+                await fetchChecklistAndTasks();
+
                 setExtendedDate('');
+                alert("Extended Timeline saved successfully!");
             } catch (err) {
                 console.error("Error saving extension date", err);
                 alert("Failed to save Extend Timeline. Is the 'extension_history' column missing from your Supabase 'checklists' table? Please run the SQL migration manually. Error: " + (err.response?.data?.error || err.message));
@@ -186,11 +190,13 @@ const ChecklistView = () => {
             const historyStr = JSON.stringify(newHistory);
             await checklistService.updateChecklist(id, { extension_history: historyStr });
 
-            setChecklist(prev => ({ ...prev, extension_history: historyStr }));
+            // Ensure React grabs the brand new server payload guaranteeing a visual map swap
+            await fetchChecklistAndTasks();
 
             if (newHistory.length === 0) {
                 setShowHistoryModal(false);
             }
+            alert("History entry deleted successfully!");
         } catch (err) {
             console.error("Error deleting extension date", err);
             alert("Database Error deleting extension date: " + (err.response?.data?.error || err.message));
@@ -432,8 +438,10 @@ const ChecklistView = () => {
                                         try {
                                             const parts = expectedDate.split('-');
                                             const formattedDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : expectedDate;
+
                                             await checklistService.updateChecklist(id, { expected_date: formattedDate });
-                                            setChecklist((prev) => ({ ...prev, expected_date: formattedDate }));
+                                            await fetchChecklistAndTasks();
+                                            alert("Expected Date saved successfully!");
                                         } catch (err) {
                                             console.error("Error saving expected date", err);
                                             alert("Failed to save Expected Date! Are you sure you ran the SQL Schema to add 'expected_date' to the 'checklists' table? Error: " + (err.response?.data?.error || err.message));
